@@ -237,3 +237,110 @@ void train(NeuralNetwork *nn, double data[][INPUT_SIZE], double targets[][OUTPUT
         }
     }
 }
+
+// main function
+
+int main()
+{
+    // dataset: rooms, area_sqft, distance_km 
+
+    double training_data[][INPUT_SIZE] = {
+       {6, 3000, 0.5},
+       {8, 4000, 0.7},
+       {5, 2000, 0.3},
+       {7, 3500, 0.6},
+       {9, 4500, 0.8},
+       {4, 1500, 0.2},
+       {10, 5000, 0.9},
+       {3, 1000, 0.1},
+       {11, 5500, 1.0},
+       {2, 500, 0.05}};
+
+    // target prices in rupees
+
+    double training_targets[][OUTPUT_SIZE] = {
+        {500000},
+        {700000},
+        {300000},
+        {600000},
+        {800000},
+        {200000},
+        {900000},
+        {100000},
+        {1000000},
+        {50000}};
+    
+    int samples = sizeof(training_data) / sizeof(training_data[0]);
+
+    // normalize input data
+
+    double min[INPUT_SIZE], max[INPUT_SIZE];
+    normalize(training_data, samples, min, max);
+
+    // normalize targets
+
+    double target_min = training_targets[0][0];
+    double target_max = training_targets[0][0];
+
+    for (int i = 1; i < samples; i++)
+    {
+        if (training_targets[i][0] < target_min)
+            target_min = training_targets[i][0];
+        if (training_targets[i][0] > target_max)
+            target_max = training_targets[i][0];
+    }
+
+    for (int i = 0; i < samples; i++)
+    {
+        if (target_max - target_min != 0)
+            training_targets[i][0] = (training_targets[i][0] - target_min) / (target_max - target_min);
+        else
+            training_targets[i][0] = 0; // if all values are the same, set to 0
+    }
+
+    // initialize neural network
+
+    NeuralNetwork nn;
+    init_network(&nn);
+
+    printf("Training Neural Network...\n");
+    printf("Architecture: %d input neurons, %d hidden neurons, %d output neurons\n", INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE);
+
+    // train the neural network
+
+    train(&nn, training_data, targets, samples);
+
+    // test predictions on training data
+
+    printf("Predictions:\n");
+    for (int i = 0; i < samples; i++)
+    {
+        forward_propagation(&nn, training_data[i]);
+
+        // denormalize: value = output * (max - min) + min
+        double predicted_price = nn.output_layer[0] * (target_max - target_min) + target_min);
+        double actual_price = training_targets[i][0] * (target_max - target_min) + target_min);
+
+        printf("Sample %d: Predicted Price: %.2f, Actual Price: %.2f\n", i + 1, predicted_price, actual_price);
+
+    }
+    
+    // predict on new data
+    double new_data[3] = {7, 3200, 0.4};
+
+    // normalize new data using training data min and max
+    for (int j = 0; j < INPUT_SIZE; j++){
+        if (max[j] - min[j] != 0)
+            new_data[j] = (new_data[j] - min[j]) / (max[j] - min[j]);
+        else
+            new_data[j] = 0; // if all values are the same, set to 0
+    }
+
+    forward_propagation(&nn, new_data);
+    double predicted_price = nn.output_layer[0] * (target_max - target_min) + target_min);
+    
+    printf("New Data: %.1f rooms, %.0f sqft, %.1f km\n", new_data[0] * (max[0] - min[0]) + min[0], new_data[1] * (max[1] - min[1]) + min[1], new_data[2] * (max[2] - min[2]) + min[2]);
+    printf("Predicted Price: %.2f\n", predicted_price);
+
+    return 0;
+}
