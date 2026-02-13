@@ -207,3 +207,33 @@ void normalize(double data[][INPUT_SIZE], int samples, double min[INPUT_SIZE], d
         }
     }
 }
+
+// training function
+
+void train(NeuralNetwork *nn, double data[][INPUT_SIZE], double targets[][OUTPUT_SIZE], int samples)
+{
+    for (int epoch = 0; epoch < EPOCHS; epoch++)
+    {
+        double total_loss = 0.0;
+
+        // training loop for each sample
+        for (int i = 0; i < samples; i++)
+        {
+            forward_propagation(nn, data[i]); // forward pass: makes predictions
+
+            for (int j = 0; j < OUTPUT_SIZE; j++)
+            {
+                double error = nn->output_layer[j] - targets[i][j];
+                total_loss += error * error; // accumulate loss (MSE)
+            }
+            backpropagation(nn, data[i], targets[i]); // backward pass: updates weights and biases
+        }
+
+        total_loss /= samples; // average loss over all samples
+
+        if (epoch % 1000 == 0)
+        {
+            printf("Epoch %d, Loss: %.4f\n", epoch, total_loss); // print progress
+        }
+    }
+}
