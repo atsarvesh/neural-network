@@ -183,25 +183,25 @@ void normalize(double data[][INPUT_SIZE], int samples, double min[INPUT_SIZE], d
 {
     for (int j = 0; j < INPUT_SIZE; j++)
     {
-        double min = data[0][j];
-        double max = data[0][j];
+        min[j] = data[0][j];
+        max[j] = data[0][j];
 
         // find min and max for each feature
 
         for (int i = 1; i < samples; i++)
         {
-            if (data[i][j] < min)
-                min = data[i][j];
-            if (data[i][j] > max)
-                max = data[i][j];
+            if (data[i][j] < min[j])
+                min[j] = data[i][j];
+            if (data[i][j] > max[j])
+                max[j] = data[i][j];
         }
 
         // normalize to [0, 1]
 
         for (int i = 0; i < samples; i++)
         {
-            if (max - min != 0)
-                data[i][j] = (data[i][j] - min) / (max - min);
+            if (max[j] - min[j] != 0)
+                data[i][j] = (data[i][j] - min[j]) / (max[j] - min[j]);
             else
                 data[i][j] = 0; // if all values are the same, set to 0
         }
@@ -308,7 +308,7 @@ int main()
 
     // train the neural network
 
-    train(&nn, training_data, targets, samples);
+    train(&nn, training_data, training_targets, samples);
 
     // test predictions on training data
 
@@ -318,8 +318,8 @@ int main()
         forward_propagation(&nn, training_data[i]);
 
         // denormalize: value = output * (max - min) + min
-        double predicted_price = nn.output_layer[0] * (target_max - target_min) + target_min);
-        double actual_price = training_targets[i][0] * (target_max - target_min) + target_min);
+        double predicted_price = nn.output_layer[0] * (target_max - target_min) + target_min;
+        double actual_price = training_targets[i][0] * (target_max - target_min) + target_min;
 
         printf("Sample %d: Predicted Price: %.2f, Actual Price: %.2f\n", i + 1, predicted_price, actual_price);
 
@@ -337,7 +337,7 @@ int main()
     }
 
     forward_propagation(&nn, new_data);
-    double predicted_price = nn.output_layer[0] * (target_max - target_min) + target_min);
+    double predicted_price = nn.output_layer[0] * (target_max - target_min) + target_min;
     
     printf("New Data: %.1f rooms, %.0f sqft, %.1f km\n", new_data[0] * (max[0] - min[0]) + min[0], new_data[1] * (max[1] - min[1]) + min[1], new_data[2] * (max[2] - min[2]) + min[2]);
     printf("Predicted Price: %.2f\n", predicted_price);
