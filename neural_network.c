@@ -3,46 +3,207 @@
 #include <math.h>
 #include <time.h>
 
-#define INPUT_NEURONS 3
-#define HIDDEN_NEURONS 4
-#define OUTPUT_NEURONS 1
+#define INPUT_SIZE 3
+#define HIDDEN_SIZE 4
+#define OUTPUT_SIZE 1
 #define LEARNING_RATE 0.0001
 #define EPOCHS 10000
 
-// structure of the neural network
+// neural network structure
 
-typedef struct
-{
+typedef struct{
 
     // layer 1: input to hidden
 
-    double weights[INPUT_NEURONS][HIDDEN_NEURONS];
-    double biases[HIDDEN_NEURONS];
+    double weights[INPUT_SIZE][HIDDEN_SIZE]; // 4 weights for each of the 3 input SIZE (4x3)
+    double biases[HIDDEN_SIZE]; // 4 biases
 
     // layer 2: hidden to output
 
-    double output_weights[HIDDEN_NEURONS][OUTPUT_NEURONS];
-    double output_biases[OUTPUT_NEURONS];
+    double output_weights[HIDDEN_SIZE][OUTPUT_SIZE]; // 1 weight for each of the 4 hidden SIZE (1x4)
+    double output_biases[OUTPUT_SIZE]; // 1 bias
 
     // activations (for backpropagation)
 
-    double hidden_layer[HIDDEN_NEURONS];
-    double output_layer[OUTPUT_NEURONS];
+    double hidden_layer[HIDDEN_SIZE]; // after ReLU
+    double output_layer[OUTPUT_SIZE]; // final output (after linear activation)
 
     // preactivations
 
-    double z_hidden[HIDDEN_NEURONS];
-    double z_output[OUTPUT_NEURONS];
+    double z_hidden[HIDDEN_SIZE]; // before ReLU
+    double z_output[OUTPUT_SIZE]; // before output
 } NeuralNetwork;
 
-// activation function and its derivative
+// ReLU activation function: max(0, x)
 
 double relu(double x)
 {
     return x > 0 ? x : 0;
 }
 
+// ReLu derivative: 1 if x > 0, else 0
+
 double relu_derivative(double x)
 {
     return x > 0 ? 1 : 0;
+}
+
+// weights initialization
+
+void init_network(NeuralNetwork *nn)
+{
+    srand(time(NULL)); // generates random numbers based on current time
+
+    // initialize weights and biases for input -> hidden layer
+
+    for (int i = 0; i < INPUT_SIZE; i++)
+    {
+        for (int j = 0; j < HIDDEN_SIZE; j++)
+        {
+            nn->weights[i][j] = ((double)rand() / RAND_MAX) * 2 - 1; // random weights between -1 and 1
+        }
+    }
+
+    for (int j = 0; j < HIDDEN_SIZE; j++)
+    {
+        nn->biases[j] = ((double)rand() / RAND_MAX) * 2 - 1;
+    }
+
+    // initialize weights and biases for hidden -> output layer
+
+    for (int i = 0; i < HIDDEN_SIZE; i++)
+    {
+        for (int j = 0; j < OUTPUT_SIZE; j++)
+        {
+            nn->output_weights[i][j] = ((double)rand() / RAND_MAX) * 2 - 1;
+        }
+    }
+
+    for (int j = 0; j < OUTPUT_SIZE; j++)
+    {
+        nn->output_biases[j] = ((double)rand() / RAND_MAX) * 2 - 1;
+    }
+}
+
+// forward propagation
+
+void forward_propagation(NeuralNetwork *nn, double input[INPUT_SIZE])
+{
+    // input -> hidden layer
+
+    for (int j = 0; j < HIDDEN_SIZE; j++)
+    {
+        nn->z_hidden[j] = nn->biases[j]; // start with bias
+
+        for (int i = 0; i < INPUT_SIZE; i++)
+        {
+            nn->z_hidden[j] += input[i] * nn->weights[i][j]; // weighted sum: z = w.x + b
+        }
+
+        nn->hidden_layer[j] = relu(nn->z_hidden[j]); // activation: a = ReLU(z)
+    }
+
+    // hidden -> output layer
+
+    for (int j = 0; j < OUTPUT_SIZE; j++)
+    {
+        nn->z_output[j] = nn->output_biases[j]; // start with bias
+
+        for (int i = 0; i < HIDDEN_SIZE; i++)
+        {
+            nn->z_output[j] += nn->hidden_layer[i] * nn->output_weights[i][j]; // weighted sum
+        }
+
+        nn->output_layer[j] = nn->z_output[j]; // linear activation (for regression)
+    }
+}
+
+// backpropagation
+
+void backpropagation(NeuralNetwork *nn, double input[INPUT_SIZE], double target[OUTPUT_SIZE])
+{
+    // calculate output layer error (mean squared error)
+
+    double output_error[OUTPUT_SIZE];
+    for (int j = 0; j < OUTPUT_SIZE; j++)
+    {
+        output_error[j] = nn->output_layer[j] - target[j]; // error = output - target
+    }
+
+    // calculate hidden layer error
+
+    double hidden_error[HIDDEN_SIZE];
+
+    for (int i = 0; i < HIDDEN_SIZE; i++)
+    {
+        hidden_error[i] = 0.0;
+
+        for (int j = 0; j < OUTPUT_SIZE; j++)
+        {
+            hidden_error[i] += output_error[j] * nn->output_weights[i][j]; // backpropagate error
+        }
+
+        hidden_error[i] *= relu_derivative(nn->z_hidden[i]); // apply ReLU derivative
+    }
+
+    // update weights and biases for hidden -> output layer
+
+    for (int i = 0; i < HIDDEN_SIZE; i++)
+    {
+        for (int j = 0; j < OUTPUT_SIZE; j++)
+        {
+            nn->output_weights[i][j] -= LEARNING_RATE * output_error[j] * nn->hidden_layer[i]; // weight update
+        }
+    }
+
+    for (int j = 0; j < OUTPUT_SIZE; j++)
+    {
+        nn->output_biases[j] -= LEARNING_RATE * output_error[j]; // bias update
+    }
+
+    // update weights and biases for input -> hidden layer
+
+    for (int i = 0; i < INPUT_SIZE; i++)
+    {
+        for (int j = 0; j < HIDDEN_SIZE; j++)
+        {
+            nn->weights[i][j] -= LEARNING_RATE * hidden_error[j] * input[i]; // weight update
+        }
+    }
+
+    for (int j = 0; j < HIDDEN_SIZE; j++)
+    {
+        nn->biases[j] -= LEARNING_RATE * hidden_error[j]; // bias update
+    }
+}
+
+// data normalization
+
+void normalize(double data[][INPUT_SIZE], int samples, double min[INPUT_SIZE], double max[INPUT_SIZE])
+{
+    for (int j = 0; j < INPUT_SIZE; j++)
+    {
+        double min = data[0][j];
+        double max = data[0][j];
+
+        // find min and max for each feature
+
+        for (int i = 1; i < samples; i++)
+        {
+            if (data[i][j] < min)
+                min = data[i][j];
+            if (data[i][j] > max)
+                max = data[i][j];
+        }
+
+        // normalize to [0, 1]
+
+        for (int i = 0; i < samples; i++)
+        {
+            if (max - min != 0)
+                data[i][j] = (data[i][j] - min) / (max - min);
+            else
+                data[i][j] = 0; // if all values are the same, set to 0
+        }
+    }
 }
